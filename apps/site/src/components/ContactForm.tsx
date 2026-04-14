@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { siteApi } from '@/lib/api';
 
 interface ContactFormProps {
@@ -11,6 +12,7 @@ interface ContactFormProps {
 }
 
 export function ContactForm({ pageId, brandId, brandName, accentColor = '#1a1a2e' }: ContactFormProps) {
+  const searchParams = useSearchParams();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -32,19 +34,24 @@ export function ContactForm({ pageId, brandId, brandName, accentColor = '#1a1a2e
 
     setSubmitting(true);
     try {
-      await siteApi.submitLead({
-        pageId,
-        brandId,
-        name,
-        email,
-        phone: phone || undefined,
-        message: message || undefined,
-        metadata: {
-          investmentRange: investmentRange || undefined,
-          source: 'contact-form',
-          submittedAt: new Date().toISOString(),
+      const pageQuery = Object.fromEntries(searchParams.entries());
+      console.log(pageQuery)
+      await siteApi.submitLead(
+        {
+          pageId,
+          brandId,
+          name,
+          email,
+          phone: phone || undefined,
+          message: message || undefined,
+          metadata: {
+            investmentRange: investmentRange || undefined,
+            source: 'contact-form',
+            submittedAt: new Date().toISOString(),
+          },
         },
-      });
+        pageQuery,
+      );
       setSubmitted(true);
     } catch (err) {
       setError('Something went wrong. Please try again.');

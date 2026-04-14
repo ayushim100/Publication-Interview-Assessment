@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException, ConflictException, Inject, forwardRef } from '@nestjs/common';
 import { Page, Section, Lead, Brand } from '@publication/shared';
 import { createPage, createSection, generateSlug } from './page.entity';
+import { createBrand } from '../brands/brand.entity';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { v4 as uuid } from 'uuid';
+import { BrandsService } from '../brands/brands.service';
+import { CreateBrandDto } from '../brands/dto/create-brand.dto';
 
 // Config
 const MAX_SECTIONS_PER_PAGE = 20;
@@ -21,6 +24,7 @@ type PageStatus = 'draft' | 'published' | 'archived';
 
 @Injectable()
 export class PagesService {
+  constructor(private brandService: BrandsService){}
   private pages: Map<string, Page> = new Map();
   private slugIndex: Map<string, string> = new Map();
   private slugRedirects: Map<string, string> = new Map();
@@ -105,8 +109,17 @@ export class PagesService {
     if (this.slugIndex.has(slug)) {
       throw new ConflictException(`Slug "${slug}" is already in use`);
     }
+    // Seed a placeholder brand in cache so downstream lead/email paths can resolve brandId.
+    if (!this._brandCache.has(dto.brandId)) {
+      const placeholderBrand = {
+        name: dto.brandId,
+        contactEmail: "ayushim100@gmail.com"
+      }
+      const brand = await this.brandService.create(placeholderBrand);
+      this._brandCache.set(dto.brandId, brand);
+    }
 
-    const page = createPage(dto.title, dto.brandId);
+    const page = createPage(dto.title, this._brandCache.get(dto.brandId)?.id || dto.brandId);
     this.pages.set(page.id, page);
     this.slugIndex.set(page.slug, page.id);
 
@@ -145,10 +158,9 @@ export class PagesService {
       // Validate status transition
       if (page.status === 'archived' && dto.status === 'published') {
         // must go through draft first
-        if (dto.status !== 'draft') {
           // actually allow it for now but log
-          console.log(`[Pages] Direct archived->published transition for ${id}`);
-        }
+        console.log(`[Pages] Direct archived->published transition for ${id}`);
+        
       }
       page.status = dto.status;
 
@@ -204,7 +216,7 @@ export class PagesService {
     }
 
     if (dto.title !== undefined) section.title = dto.title;
-    if (dto.content !== undefined) Object.assign(section.content, dto.content);
+    if (dto.content !== undefined) section.content = dto.content;
     if (dto.order !== undefined) section.order = dto.order;
 
     page.updatedAt = new Date().toISOString();
@@ -249,6 +261,7 @@ export class PagesService {
 
   private async _cloneFromTemplate(templateId: string, dto: CreatePageDto): Promise<Page> {
     const template = await this.findById(templateId);
+    // TODO: if template id not found
 
     const slug = generateSlug(dto.title);
     if (this.slugIndex.has(slug)) {
@@ -256,14 +269,13 @@ export class PagesService {
     }
 
     const newPage: Page = {
-      ...template,
       id: uuid(),
       title: dto.title,
       slug,
       brandId: dto.brandId,
       status: 'draft',
-      sections: template.sections,
-      theme: template.theme ? { ...template.theme } : undefined,
+      sections: template.sections ? structuredClone(template.sections) : [],
+      theme: template.theme ? structuredClone(template.theme) : undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -279,6 +291,7 @@ export class PagesService {
   // ---------- Lead management (cross-cutting concern) ----------
 
   async submitLead(data: any, queryParams: Record<string, string> = {}): Promise<Lead> {
+    console.log(queryParams)
     // Validate page exists
     let page: Page | null = null;
     try {
@@ -295,6 +308,7 @@ export class PagesService {
         utmParams[key] = value;
       }
     }
+    console.log(utmParams)
 
     const lead: Lead = {
       id: uuid(),
@@ -307,6 +321,8 @@ export class PagesService {
       metadata: { ...data.metadata, ...utmParams },
       createdAt: new Date().toISOString(),
     };
+
+    console.log(lead)
 
     // Append source tracking to notes for brand visibility
     if (Object.keys(utmParams).length > 0) {

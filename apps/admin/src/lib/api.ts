@@ -11,6 +11,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(error.message || `API error: ${res.status}`);
   }
 
+  if (res.status == 201){
+    return undefined as T
+  }
+
   return res.json();
 }
 

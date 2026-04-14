@@ -10,6 +10,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(`API error: ${res.status}`);
   }
 
+  if (res.status == 201){
+    return undefined as T
+  }
+  
   return res.json();
 }
 
@@ -20,8 +24,13 @@ export const siteApi = {
   getBrand: (id: string) =>
     request<any>(`/brands/${id}`),
 
-  submitLead: (data: any) =>
-    request<any>('/leads', { method: 'POST', body: JSON.stringify(data) }),
+  submitLead: (data: any, query?: Record<string, string>) => {
+    const qs =
+      query && Object.keys(query).length > 0
+        ? `?${new URLSearchParams(query).toString()}`
+        : '';
+    return request<any>(`/leads${qs}`, { method: 'POST', body: JSON.stringify(data) });
+  },
 
   getPublishedPages: () =>
     request<any[]>('/pages').then((pages) =>

@@ -1,5 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req } from '@nestjs/common';
-import { Request } from 'express';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode } from '@nestjs/common';
 import { PagesService } from './pages.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
@@ -70,6 +69,7 @@ export class PagesController {
   }
 
   @Delete(':id')
+  @HttpCode(201)
   delete(@Param('id') id: string) {
     return this.pagesService.delete(id);
   }
@@ -108,6 +108,7 @@ export class PagesController {
   }
 
   @Delete(':id/sections/:sectionId')
+  @HttpCode(201)
   removeSection(@Param('id') id: string, @Param('sectionId') sectionId: string) {
     return this.pagesService.removeSection(id, sectionId);
   }

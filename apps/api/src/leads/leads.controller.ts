@@ -1,5 +1,4 @@
 import { Controller, Get, Post, Body, Param, Query, Req } from '@nestjs/common';
-import { Request } from 'express';
 import { PagesService } from '../pages/pages.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 
@@ -25,7 +24,7 @@ export class LeadsController {
   }
 
   @Post()
-  create(@Body() dto: CreateLeadDto, @Req() req: Request) {
-    return this.pagesService.submitLead(dto, req.query as Record<string, string>);
+  create(@Body() dto: CreateLeadDto, @Query() query: Record<string, string>) {
+    return this.pagesService.submitLead(dto, query);
   }
 }

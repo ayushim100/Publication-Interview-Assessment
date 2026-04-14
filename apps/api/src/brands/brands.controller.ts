@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode } from '@nestjs/common';
 import { BrandsService } from './brands.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { Brand } from '@publication/shared';
@@ -28,6 +28,7 @@ export class BrandsController {
   }
 
   @Delete(':id')
+  @HttpCode(201)
   delete(@Param('id') id: string) {
     return this.brandsService.delete(id);
   }
